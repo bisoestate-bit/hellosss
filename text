@@ -1,0 +1,2 @@
+sudo apt-get install mingw-w64-gcc-g++ python3-cryptography
+pip3 install pycryptodome
