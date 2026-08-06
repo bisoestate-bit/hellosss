@@ -1,9 +1,3 @@
->_
-✓
-Already optimal
-The syntax error on line 41 is likely due to a missing closing parenthesis in the SYSCALL_STUB macro definition. Let's fix that and provide a more robust version of the script.
-
-### TheLoader.py
 
 import os
 import sys
