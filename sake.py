@@ -1,4 +1,4 @@
-Import pygame
+import pygame
 import socket
 import subprocess
 import threading
