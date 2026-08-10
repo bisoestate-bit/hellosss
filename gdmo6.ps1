@@ -4,8 +4,6 @@
 # =============================================
 
 # --- [Import .NET Libraries] ---
-# Explicitly add System.Core which contains many fundamental types including crypto
-# If this fails, the environment might be too restrictive or require specific crypto assemblies.
 Add-Type -AssemblyName System.Core
 
 # --- [Obfuscated IP & Port Setup] ---
