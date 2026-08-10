@@ -1,0 +1,4 @@
+Sudo apt-get update
+Sudo apt-get install -y wget
+Wget https://github.com/PowerShell/PowerShell/releases/download/v7.2.6/powershell_7.2.6-1.deb_ubuntu20.04_amd64.deb
+Sudo dpkg -i powershell_7.2.6-1.deb_ubuntu20.04_amd64.deb
